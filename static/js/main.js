@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Y in SVG starts from top
                     let py = imageHeight - py_matplotlib;
                     // Adjust upward (reduce y value)
-                    py -= 35;
+                    py -= 50;
                     
                     return [px, py];
                 });
