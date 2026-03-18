@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trayectorias Ortogonales - Dipolo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-red-500">
+                    Trayectorias Ortogonales: Dipolo Eléctrico
+                </h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Visualización interactiva de curvas equipotenciales y líneas de campo.</p>
+            </div>
+            <button id="themeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-300">
+                <!-- Sun Icon -->
+                <svg id="sunIcon" class="w-6 h-6 hidden dark:block text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <!-- Moon Icon -->
+                <svg id="moonIcon" class="w-6 h-6 block dark:hidden text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Controls Sidebar -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl transition-colors duration-300">
+                <h2 class="text-xl font-semibold mb-6 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    Parámetros
+                </h2>
+                
+                <!-- Q Slider -->
+                <div class="mb-8">
+                    <label for="sliderQ" class="block text-sm font-medium mb-2">
+                        Magnitud de Carga (q):
+                        <span id="valQ" class="font-bold text-blue-600 dark:text-blue-400">1.0</span> × 10<sup>-9</sup> C
+                    </label>
+                    <input type="range" id="sliderQ" min="0.1" max="5.0" step="0.1" value="1.0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>0.1nC</span>
+                        <span>5.0nC</span>
+                    </div>
+                </div>
+
+                <!-- D Slider -->
+                <div class="mb-8">
+                    <label for="sliderD" class="block text-sm font-medium mb-2">
+                        Distancia al origen (d):
+                        <span id="valD" class="font-bold text-red-600 dark:text-red-400">1.0</span> m
+                    </label>
+                    <input type="range" id="sliderD" min="0.1" max="2.5" step="0.1" value="1.0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>0.1m</span>
+                        <span>2.5m</span>
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
+                    <h3 class="font-semibold text-blue-800 dark:text-blue-300 mb-2">Validación de Ortogonalidad</h3>
+                    <p id="dotProductMsg" class="text-sm text-blue-700 dark:text-blue-200">
+                        Calculando...
+                    </p>
+                </div>
+                
+                <div class="mt-8 bg-gray-50 dark:bg-gray-750 p-4 rounded-xl text-sm border dark:border-gray-700 text-gray-600 dark:text-gray-300">
+                    <p><strong>Fórmula:</strong></p>
+                    <div class="my-2 bg-white dark:bg-gray-900 p-2 rounded shadow-inner overflow-x-auto text-center font-mono text-xs">
+                        V(x,y) = k·q [ 1/r₁ - 1/r₂ ]
+                    </div>
+                    <p>Las curvas son equipotenciales, y las flechas son las líneas de campo eléctrico que son ortogonales a ellas.</p>
+                </div>
+            </div>
+
+            <!-- Visualization Area -->
+            <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl flex flex-col justify-center items-center min-h-[500px] relative transition-colors duration-300">
+                <!-- Loading Spinner -->
+                <div id="loader" class="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 rounded-2xl z-10 backdrop-blur-sm transition-opacity duration-300">
+                    <div class="w-16 h-16 border-4 border-blue-400 border-t-blue-600 rounded-full animate-spin"></div>
+                    <p class="mt-4 font-medium text-gray-600 dark:text-gray-300 animate-pulse">Renderizando gráfica...</p>
+                </div>
+                
+                <!-- Display Image -->
+                <img id="plotImage" src="" alt="Trayectorias Ortogonales del Dipolo" class="max-w-full h-auto rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 opacity-0 transition-opacity duration-500 ease-in-out">
+            </div>
+        </div>
+        
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>Construido con Flask, Matplotlib y TailwindCSS.</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

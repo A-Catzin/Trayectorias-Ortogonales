@@ -1,0 +1,38 @@
+/* Custom overrides and animations */
+
+/* Custom sliding thumb for range inputs */
+input[type=range]::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  box-shadow: 0 0 5px rgba(0,0,0,0.2);
+  transition: transform 0.1s;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.dark input[type=range]::-webkit-slider-thumb {
+  background: #60a5fa;
+}
+
+input[type=range]#sliderD::-webkit-slider-thumb {
+    background: #ef4444;
+}
+.dark input[type=range]#sliderD::-webkit-slider-thumb {
+    background: #f87171;
+}
+
+/* Image fade in utility */
+.fade-in {
+    opacity: 1 !important;
+}
+
+/* Custom bg for deeper dark mode blocks */
+.dark \.bg-gray-750 {
+    background-color: #2a3241;
+}
