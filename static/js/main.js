@@ -91,8 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update SVG dimensions
                     animationOverlay.setAttribute('viewBox', `0 0 ${imageWidth} ${imageHeight}`);
                     
-                    // Draw animated field lines overlay
-                    drawAnimatedFieldLinesOverlay();
+                    // Draw animated field lines overlay using plot_area alignment
+                    drawAnimatedFieldLinesOverlay(plotData.plot_area);
                     
                     loader.classList.add('hidden');
                     chartWrapper.style.display = 'block';
@@ -113,8 +113,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Function to draw animated field line overlay with dashed flowing effect
-    function drawAnimatedFieldLinesOverlay() {
-        if (!animationData || !animationData.field_lines) return;
+    function drawAnimatedFieldLinesOverlay(plotArea) {
+        if (!animationData || !animationData.field_lines || !plotArea) return;
 
         // Clear previous paths
         animationOverlay.innerHTML = '';
@@ -141,26 +141,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 stroke-dasharray: 6, 8;
                 stroke-linecap: round;
                 stroke-linejoin: round;
-                opacity: 0.4;
+                opacity: 0.6;
                 animation: ${animId} 1.5s linear infinite;
             }
         `;
         document.head.appendChild(styleSheet);
 
-        // Sample field lines (not all) to avoid overcrowding
-        const sampleRate = Math.max(1, Math.floor(animationData.field_lines.length / 50));
-        
+        const plotLeft = plotArea.left * imageWidth;
+        const plotBottom = plotArea.bottom * imageHeight;
+        const plotWidth = plotArea.width * imageWidth;
+        const plotHeight = plotArea.height * imageHeight;
+
         // Add animated lines for field
-        animationData.field_lines.forEach((line, idx) => {
-            // Only draw every Nth line to avoid duplication
-            if (idx % sampleRate !== 0) return;
-            
+        animationData.field_lines.forEach((line) => {
             if (line.x && line.y && line.x.length > 2) {
-                // Scale coordinates to SVG space (-3 to 3 range to pixels)
+                // Scale coordinates to SVG space
                 const scaledPoints = line.x.map((xi, i) => {
-                    // Map from [-3, 3] to [0, imageWidth] and [0, imageHeight]
-                    const px = ((xi + 3) / 6) * imageWidth;
-                    const py = ((3 - line.y[i]) / 6) * imageHeight; // Inverted Y for SVG
+                    // Map x from [-3, 3] to fractional [0, 1], then to pixel plot area
+                    const fx = (xi + 3) / 6;
+                    const px = plotLeft + (fx * plotWidth);
+                    
+                    // Map y from [-3, 3] to fractional [0, 1], then to pixel plot area 
+                    const fy = (line.y[i] + 3) / 6;
+                    // Y in matplotlib starts from bottom
+                    let py_matplotlib = plotBottom + (fy * plotHeight);
+                    // Y in SVG starts from top
+                    let py = imageHeight - py_matplotlib;
+                    // Adjust upward (reduce y value)
+                    py -= 15;
+                    
                     return [px, py];
                 });
 

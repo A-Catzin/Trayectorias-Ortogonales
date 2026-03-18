@@ -55,8 +55,9 @@ def generate_plot(q, d, is_dark_mode=False):
     contour = ax.contour(X, Y, V, levels=levels, cmap='RdBu', alpha=0.6, linewidths=1.5)
     
     # Plot electric field lines (orthogonal trajectories)
-    color = "white" if is_dark_mode else "black"
-    ax.streamplot(X, Y, Ex, Ey, color=color, linewidth=1, density=1.5, arrowstyle='->', arrowsize=1.5)
+    # Removing streamplot because we are rendering SVG animated lines in the frontend instead.
+    # color = "white" if is_dark_mode else "black"
+    # ax.streamplot(X, Y, Ex, Ey, color=color, linewidth=1, density=1.5, arrowstyle='->', arrowsize=1.5)
     
     # Plot the charges
     ax.plot(d, 0, 'ro', markersize=10, label='+q')
@@ -74,13 +75,23 @@ def generate_plot(q, d, is_dark_mode=False):
          spine.set_color(text_color)
     
     plt.tight_layout()
+    fig.canvas.draw()
+    
+    # Calculate plot bounding box to accurately align the SVG overlay in frontend
+    bbox = ax.get_position()
+    plot_area = {
+        'left': bbox.x0,
+        'bottom': bbox.y0,
+        'width': bbox.width,
+        'height': bbox.height
+    }
     
     # Save to base64
     buf = io.BytesIO()
     plt.savefig(buf, format='png', transparent=True, dpi=120)
     plt.close(fig)
     buf.seek(0)
-    return base64.b64encode(buf.getvalue()).decode('utf-8')
+    return base64.b64encode(buf.getvalue()).decode('utf-8'), plot_area
 
 @app.route('/')
 def index():
@@ -94,7 +105,7 @@ def api_plot():
     is_dark_mode = data.get('darkMode', False)
     
     try:
-        plot_base64 = generate_plot(q, d, is_dark_mode)
+        plot_base64, plot_area = generate_plot(q, d, is_dark_mode)
         
         # Calculate dot product at key points to validate orthogonality.
         # Dot product of E vector and tangent vector of Equipotential curve must be 0
@@ -106,6 +117,7 @@ def api_plot():
         return jsonify({
             'success': True,
             'image': f'data:image/png;base64,{plot_base64}',
+            'plot_area': plot_area,
             'dot_product_msg': "El producto punto entre el vector del campo eléctrico y el vector tangente a la curva equipotencial es 0 (E · dl = 0), demostrando ortogonalidad en toda la gráfica."
         })
     except Exception as e:
@@ -121,54 +133,57 @@ def api_plot_animated():
     try:
         X, Y, V, Ex, Ey = calculate_field_and_potential(q, d)
         
-        # Generate field lines from different starting points
+        # Generate field lines from different starting points using precise mathematical calculation
         field_lines = []
         
-        # Starting points: grid around the negative charge
-        n_radial = 8  # Lines radiating outward
-        n_angular = 16  # Lines around the circle
+        # Start lines in concentric circles around +q and -q
+        n_angular = 24
         
-        for r in np.linspace(0.2, 2.5, n_radial):
-            for angle in np.linspace(0, 2*np.pi, n_angular, endpoint=False):
-                start_x = -d + r * np.cos(angle)
-                start_y = r * np.sin(angle)
-                
-                # Skip if too close to positive charge
-                dist_to_pos = np.sqrt((start_x - d)**2 + start_y**2)
-                if dist_to_pos > 0.3:
-                    # Trace field line
+        for charge_pos in [d, -d]:
+            for r in [0.15, 0.35]:
+                for angle in np.linspace(0, 2*np.pi, n_angular, endpoint=False):
+                    start_x = charge_pos + r * np.cos(angle)
+                    start_y = r * np.sin(angle)
+                    
                     x_line = [start_x]
                     y_line = [start_y]
                     x, y = start_x, start_y
                     
-                    dt = 0.015
-                    max_steps = 300
+                    # Direction is forward (1) for +q and backward (-1) for -q
+                    direction = 1 if charge_pos == d else -1
+                    
+                    dt = 0.02
+                    max_steps = 400
                     
                     for step in range(max_steps):
-                        if not (-3 <= x <= 3 and -3 <= y <= 3):
+                        # Bounds check
+                        if not (-3.1 <= x <= 3.1 and -3.1 <= y <= 3.1):
                             break
+                            
+                        # Compute exact field components using equations to avoid grid alignment issues
+                        r1_sq = (x - d)**2 + y**2
+                        r2_sq = (x + d)**2 + y**2
                         
-                        # Get E field at current point
-                        ix = int((x + 3) / 6 * (X.shape[1] - 1))
-                        iy = int((y + 3) / 6 * (X.shape[0] - 1))
-                        ix = np.clip(ix, 0, X.shape[1] - 1)
-                        iy = np.clip(iy, 0, X.shape[0] - 1)
+                        if r1_sq < 0.01 or r2_sq < 0.01:
+                            break  # Hit a charge
+                            
+                        # Ex and Ey (proportional magnitude doesn't matter since we normalize next)
+                        ex = (x - d)/r1_sq**1.5 - (x + d)/r2_sq**1.5
+                        ey = y/r1_sq**1.5 - y/r2_sq**1.5
                         
-                        ex = Ex[iy, ix]
-                        ey = Ey[iy, ix]
                         mag = np.sqrt(ex**2 + ey**2)
                         
-                        if mag > 1e-6:
+                        if mag > 1e-10:
                             ex /= mag
                             ey /= mag
-                            x += ex * dt
-                            y += ey * dt
+                            x += direction * ex * dt
+                            y += direction * ey * dt
                             x_line.append(x)
                             y_line.append(y)
                         else:
                             break
                     
-                    if len(x_line) > 3:
+                    if len(x_line) > 5:
                         field_lines.append({
                             'x': x_line,
                             'y': y_line,
