@@ -21,8 +21,6 @@
     </script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css">
-    <!-- Plotly JS for animated visualizations -->
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-6xl">
@@ -99,8 +97,15 @@
                     <p class="mt-4 font-medium text-gray-600 dark:text-gray-300 animate-pulse">Renderizando gráfica animada...</p>
                 </div>
                 
-                <!-- Plotly Chart Container -->
-                <div id="plotContainer" style="width: 100%; height: 100%; border-radius: 0.5rem;"></div>
+                <!-- Chart Container with SVG Overlay -->
+                <div id="chartWrapper" style="position: relative; width: 100%; height: 100%; display: none;">
+                    <!-- Matplotlib Image -->
+                    <img id="plotImage" src="" alt="Trayectorias Ortogonales del Dipolo" style="width: 100%; height: auto; display: block; border-radius: 0.5rem;">
+                    
+                    <!-- SVG Overlay for Animated Field Lines -->
+                    <svg id="animationOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair;">
+                    </svg>
+                </div>
             </div>
         </div>
         

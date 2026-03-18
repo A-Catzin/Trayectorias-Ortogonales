@@ -113,67 +113,42 @@ def api_plot():
 
 @app.route('/api/plot-animated', methods=['POST'])
 def api_plot_animated():
-    """Returns data for animated plot using Plotly"""
+    """Returns field line data for animated visualization"""
     data = request.json
     q = float(data.get('q', 1e-9))
     d = float(data.get('d', 1.0))
-    is_dark_mode = data.get('darkMode', False)
     
     try:
         X, Y, V, Ex, Ey = calculate_field_and_potential(q, d)
         
-        # Prepare field line data
-        abs_max_V = np.max(np.abs(V))
-        if abs_max_V <= 0:
-            abs_max_V = 1e-3
+        # Generate field lines from different starting points
+        field_lines = []
         
-        # Create equipotential contour data
-        equipotential_traces = []
-        levels = np.linspace(-abs_max_V, abs_max_V, 20)
+        # Starting points: grid around the negative charge
+        n_radial = 8  # Lines radiating outward
+        n_angular = 16  # Lines around the circle
         
-        contour_data = {
-            'x': X.flatten().tolist(),
-            'y': Y.flatten().tolist(),
-            'z': V.flatten().tolist(),
-            'type': 'contour',
-            'contours': {
-                'showlabels': False,
-                'coloring': 'heatmap'
-            },
-            'colorscale': 'RdBu',
-            'showscale': False,
-            'line': {'width': 1.5},
-            'opacity': 0.7
-        }
-        
-        # Create streamline data (field lines)
-        t = np.linspace(0, 1, 50)  # For animation frames
-        
-        # Field line starting points (circles around the axis)
-        n_lines = 36
-        angles = np.linspace(0, 2*np.pi, n_lines, endpoint=False)
-        start_r = 0.3
-        starting_points = [(start_r * np.cos(a), start_r * np.sin(a)) for a in angles]
-        
-        field_lines_frames = []
-        max_steps = 100
-        
-        for frame_idx in range(1, max_steps + 1):
-            frame_lines = []
-            
-            # Integrate field lines (simple Euler method)
-            for start_x, start_y in starting_points:
-                x_line = [start_x]
-                y_line = [start_y]
-                x, y = start_x, start_y
+        for r in np.linspace(0.2, 2.5, n_radial):
+            for angle in np.linspace(0, 2*np.pi, n_angular, endpoint=False):
+                start_x = -d + r * np.cos(angle)
+                start_y = r * np.sin(angle)
                 
-                dt = 0.02
-                steps = frame_idx
-                
-                for step in range(steps):
-                    # Get E field at current point (bilinear interpolation)
-                    if -3 <= x <= 3 and -3 <= y <= 3:
-                        # Simple nearest neighbor for E field
+                # Skip if too close to positive charge
+                dist_to_pos = np.sqrt((start_x - d)**2 + start_y**2)
+                if dist_to_pos > 0.3:
+                    # Trace field line
+                    x_line = [start_x]
+                    y_line = [start_y]
+                    x, y = start_x, start_y
+                    
+                    dt = 0.015
+                    max_steps = 300
+                    
+                    for step in range(max_steps):
+                        if not (-3 <= x <= 3 and -3 <= y <= 3):
+                            break
+                        
+                        # Get E field at current point
                         ix = int((x + 3) / 6 * (X.shape[1] - 1))
                         iy = int((y + 3) / 6 * (X.shape[0] - 1))
                         ix = np.clip(ix, 0, X.shape[1] - 1)
@@ -188,30 +163,21 @@ def api_plot_animated():
                             ey /= mag
                             x += ex * dt
                             y += ey * dt
-                        
-                        if -3 <= x <= 3 and -3 <= y <= 3:
                             x_line.append(x)
                             y_line.append(y)
-                
-                if len(x_line) > 1:
-                    frame_lines.append({'x': x_line, 'y': y_line})
-            
-            field_lines_frames.append(frame_lines)
-        
-        # Get last frame for static display
-        last_frame_lines = field_lines_frames[-1]
-        
-        text_color = "white" if is_dark_mode else "black"
+                        else:
+                            break
+                    
+                    if len(x_line) > 3:
+                        field_lines.append({
+                            'x': x_line,
+                            'y': y_line,
+                            'length': len(x_line)
+                        })
         
         return jsonify({
             'success': True,
-            'contour': contour_data,
-            'field_lines': last_frame_lines,
-            'charges': [
-                {'x': d, 'y': 0, 'type': '+q', 'color': 'red'},
-                {'x': -d, 'y': 0, 'type': '-q', 'color': 'blue'}
-            ],
-            'text_color': text_color,
+            'field_lines': field_lines,
             'q': q,
             'd': d,
             'dot_product_msg': "El producto punto entre el vector del campo eléctrico y el vector tangente a la curva equipotencial es 0 (E · dl = 0), demostrando ortogonalidad."
