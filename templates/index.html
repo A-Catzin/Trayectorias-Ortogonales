@@ -21,6 +21,8 @@
     </script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Plotly JS for animated visualizations -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-6xl">
@@ -90,15 +92,15 @@
             </div>
 
             <!-- Visualization Area -->
-            <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl flex flex-col justify-center items-center min-h-[500px] relative transition-colors duration-300">
+            <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl flex flex-col justify-center items-center min-h-[600px] relative transition-colors duration-300">
                 <!-- Loading Spinner -->
                 <div id="loader" class="absolute inset-0 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 rounded-2xl z-10 backdrop-blur-sm transition-opacity duration-300">
                     <div class="w-16 h-16 border-4 border-blue-400 border-t-blue-600 rounded-full animate-spin"></div>
-                    <p class="mt-4 font-medium text-gray-600 dark:text-gray-300 animate-pulse">Renderizando gráfica...</p>
+                    <p class="mt-4 font-medium text-gray-600 dark:text-gray-300 animate-pulse">Renderizando gráfica animada...</p>
                 </div>
                 
-                <!-- Display Image -->
-                <img id="plotImage" src="" alt="Trayectorias Ortogonales del Dipolo" class="max-w-full h-auto rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 opacity-0 transition-opacity duration-500 ease-in-out">
+                <!-- Plotly Chart Container -->
+                <div id="plotContainer" style="width: 100%; height: 100%; border-radius: 0.5rem;"></div>
             </div>
         </div>
         

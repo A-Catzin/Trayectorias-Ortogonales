@@ -111,5 +111,113 @@ def api_plot():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/plot-animated', methods=['POST'])
+def api_plot_animated():
+    """Returns data for animated plot using Plotly"""
+    data = request.json
+    q = float(data.get('q', 1e-9))
+    d = float(data.get('d', 1.0))
+    is_dark_mode = data.get('darkMode', False)
+    
+    try:
+        X, Y, V, Ex, Ey = calculate_field_and_potential(q, d)
+        
+        # Prepare field line data
+        abs_max_V = np.max(np.abs(V))
+        if abs_max_V <= 0:
+            abs_max_V = 1e-3
+        
+        # Create equipotential contour data
+        equipotential_traces = []
+        levels = np.linspace(-abs_max_V, abs_max_V, 20)
+        
+        contour_data = {
+            'x': X.flatten().tolist(),
+            'y': Y.flatten().tolist(),
+            'z': V.flatten().tolist(),
+            'type': 'contour',
+            'contours': {
+                'showlabels': False,
+                'coloring': 'heatmap'
+            },
+            'colorscale': 'RdBu',
+            'showscale': False,
+            'line': {'width': 1.5},
+            'opacity': 0.7
+        }
+        
+        # Create streamline data (field lines)
+        t = np.linspace(0, 1, 50)  # For animation frames
+        
+        # Field line starting points (circles around the axis)
+        n_lines = 36
+        angles = np.linspace(0, 2*np.pi, n_lines, endpoint=False)
+        start_r = 0.3
+        starting_points = [(start_r * np.cos(a), start_r * np.sin(a)) for a in angles]
+        
+        field_lines_frames = []
+        max_steps = 100
+        
+        for frame_idx in range(1, max_steps + 1):
+            frame_lines = []
+            
+            # Integrate field lines (simple Euler method)
+            for start_x, start_y in starting_points:
+                x_line = [start_x]
+                y_line = [start_y]
+                x, y = start_x, start_y
+                
+                dt = 0.02
+                steps = frame_idx
+                
+                for step in range(steps):
+                    # Get E field at current point (bilinear interpolation)
+                    if -3 <= x <= 3 and -3 <= y <= 3:
+                        # Simple nearest neighbor for E field
+                        ix = int((x + 3) / 6 * (X.shape[1] - 1))
+                        iy = int((y + 3) / 6 * (X.shape[0] - 1))
+                        ix = np.clip(ix, 0, X.shape[1] - 1)
+                        iy = np.clip(iy, 0, X.shape[0] - 1)
+                        
+                        ex = Ex[iy, ix]
+                        ey = Ey[iy, ix]
+                        mag = np.sqrt(ex**2 + ey**2)
+                        
+                        if mag > 1e-6:
+                            ex /= mag
+                            ey /= mag
+                            x += ex * dt
+                            y += ey * dt
+                        
+                        if -3 <= x <= 3 and -3 <= y <= 3:
+                            x_line.append(x)
+                            y_line.append(y)
+                
+                if len(x_line) > 1:
+                    frame_lines.append({'x': x_line, 'y': y_line})
+            
+            field_lines_frames.append(frame_lines)
+        
+        # Get last frame for static display
+        last_frame_lines = field_lines_frames[-1]
+        
+        text_color = "white" if is_dark_mode else "black"
+        
+        return jsonify({
+            'success': True,
+            'contour': contour_data,
+            'field_lines': last_frame_lines,
+            'charges': [
+                {'x': d, 'y': 0, 'type': '+q', 'color': 'red'},
+                {'x': -d, 'y': 0, 'type': '-q', 'color': 'blue'}
+            ],
+            'text_color': text_color,
+            'q': q,
+            'd': d,
+            'dot_product_msg': "El producto punto entre el vector del campo eléctrico y el vector tangente a la curva equipotencial es 0 (E · dl = 0), demostrando ortogonalidad."
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
